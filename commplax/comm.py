@@ -87,12 +87,11 @@ def qamdecision(x, L):
     if any(np.iscomplex(x)):
         I = pamdecision(np.real(x), M)
         Q = pamdecision(np.imag(x), M)
-        y = I + 1j*Q
+        return I + 1j*Q
     else: # is tuple
         I = pamdecision(x[0], M)
         Q = pamdecision(x[1], M)
-        y = (I, Q)
-    return y
+        return I, Q
 
 
 def qammod(x, L):
@@ -110,21 +109,18 @@ def qamdemod(x, L):
     x = qamdecision(x, L)
     c = ((np.real(x) + M - 1) // 2).astype(int)
     r = ((M - 1 - np.imag(x)) // 2).astype(int)
-    d = qamgrayenc_int(r * M + c, L)
-    return d
+    return qamgrayenc_int(r * M + c, L)
 
 
 def int2bit(d, M):
     M = np.asarray(M, dtype=np.int)
     d = np.atleast_1d(d).astype(np.uint8)
-    b = np.unpackbits(d[:,None], axis=1)[:,-M:]
-    return b
+    return np.unpackbits(d[:,None], axis=1)[:,-M:]
 
 
 def bit2int(b, M):
     b = np.asarray(b, dtype=np.uint8)
-    d = np.packbits(np.pad(b.reshape((-1,M)), ((0,0),(8-M,0))))
-    return d
+    return np.packbits(np.pad(b.reshape((-1,M)), ((0,0),(8-M,0))))
 
 
 def grayqamplot(L):
@@ -150,7 +146,7 @@ def parseqamorder(type_str):
     M = int(re.findall(r'\d+', type_str)[0])
     T = re.findall(r'[a-zA-Z]+', type_str)[0].lower()
     if T != 'qam':
-        raise ValueError('{} is not implemented yet'.format(T))
+        raise ValueError(f'{T} is not implemented yet')
     return M
 
 
@@ -181,9 +177,7 @@ def anuqrng_bit(L):
         N += len(b)
         bits.append(b)
 
-    bits = np.concatenate(bits)[:L]
-
-    return bits
+    return np.concatenate(bits)[:L]
 
 
 def rcosdesign(beta, span, sps, shape='normal', dtype=np.float64):
@@ -241,8 +235,7 @@ def upsample(x, n, axis=0, trim=False):
     x = signal.upfirdn([1], x, n, axis=axis)
     pads = np.zeros((x.ndim, 2), dtype=int)
     pads[axis, 1] = n - 1
-    y = x if trim else np.pad(x, pads)
-    return y
+    return x if trim else np.pad(x, pads)
 
 
 def resample(x, p, q, axis=0):
@@ -290,7 +283,10 @@ def gauss(bw, taps=None, oddtaps=True, dtype=np.float64):
     if taps is None:
         taps = mintaps
     elif taps < mintaps:
-        raise ValueError('required {} taps which is less than minimal default {}'.format(taps, mintaps))
+        raise ValueError(
+            f'required {taps} taps which is less than minimal default {mintaps}'
+        )
+
 
     if oddtaps is not None:
         if oddtaps:
@@ -336,7 +332,7 @@ def dbp_params(
     step_method="uniform"):
 
     domain = domain.lower()
-    assert domain == 'time' or domain == 'frequency'
+    assert domain in ['time', 'frequency']
 
     # short names
     pi  = np.pi
@@ -364,22 +360,17 @@ def dbp_params(
     k       = np.arange(freqs)
     w       = np.where(k > delay, k - freqs, k) * w_res # ifftshifted
 
-    if step_method.lower() == "uniform":
-        H   = exp(-1j * (-B_2 / 2 * (w + dw)**2 + B_3 / 6 * (w + dw)**3) * \
-                      span_length * spans / virtual_spans / steps_per_span)
-        H_casual = H * exp(-1j * w * delay / sample_rate)
-        h_casual = ifft(H_casual)
-
-        phi = spans / virtual_spans * gamma * L_eff(span_length / steps_per_span) * LP * \
-            exp(-alpha * span_length * (steps_per_span - np.arange(0, NIter) % steps_per_span-1) / steps_per_span)
-    else:
+    if step_method.lower() != "uniform":
         raise ValueError("step method '%s' not implemented" % step_method)
 
-    if polmux:
-        dims = 2
-    else:
-        dims = 1
+    H   = exp(-1j * (-B_2 / 2 * (w + dw)**2 + B_3 / 6 * (w + dw)**3) * \
+                  span_length * spans / virtual_spans / steps_per_span)
+    H_casual = H * exp(-1j * w * delay / sample_rate)
+    h_casual = ifft(H_casual)
 
+    phi = spans / virtual_spans * gamma * L_eff(span_length / steps_per_span) * LP * \
+        exp(-alpha * span_length * (steps_per_span - np.arange(0, NIter) % steps_per_span-1) / steps_per_span)
+    dims = 2 if polmux else 1
     H = np.tile(H[None, :, None], (NIter, 1, dims))
     h_casual = np.tile(h_casual[None, :, None], (NIter, 1, dims))
     phi = np.tile(phi[:, None, None], (1, dims, dims))
@@ -413,8 +404,7 @@ def finddelay(x, y):
     c = abs(signal.correlate(x, y, mode='full', method='fft'))
     k = np.arange(-len(y)+1, len(x))
     i = np.lexsort((np.abs(k), -c))[0] # lexsort to handle case 4
-    d = -k[i]
-    return d
+    return -k[i]
 
 
 def align_periodic(y, x, begin=0, last=2000, b=0.5):
@@ -482,7 +472,7 @@ def qamqot(y, x, count_dim=True, count_total=True, L=None, eval_range=(0, 0), sc
 
     D = y.shape[-1]
 
-    z = [(a, b) for a, b in zip(y.T, x.T)]
+    z = list(zip(y.T, x.T))
 
     SNR_fn = lambda y, x: 10. * np.log10(getpower(x, False) / getpower(x - y, False))
 
@@ -507,13 +497,13 @@ def qamqot(y, x, count_dim=True, count_total=True, L=None, eval_range=(0, 0), sc
 
     if count_dim:
         qot += list(map(f, z))
-        ind += ['dim' + str(n) for n in range(D)]
+        ind += [f'dim{str(n)}' for n in range(D)]
 
     if count_total:
         qot += [f((y.ravel(), x.ravel()))]
         ind += ['total']
 
-    if len(qot) > 0:
+    if qot:
         df = pd.DataFrame(qot, columns=['BER', 'QSq', 'SNR'], index=ind)
 
     return df
@@ -530,7 +520,7 @@ def qamqot_local(y, x, frame_size=10000, L=None, scale=1, eval_range=None):
     Y = op.frame(y, frame_size, frame_size, True)
     X = op.frame(x, frame_size, frame_size, True)
 
-    zf = [(yf, xf) for yf, xf in zip(Y, X)]
+    zf = list(zip(Y, X))
 
     f = lambda z: qamqot(z[0], z[1], count_dim=True, L=L, scale=scale).to_numpy()
 
@@ -552,15 +542,13 @@ def corr_local(y, x, frame_size=10000, L=None):
     Y = op.frame(y, frame_size, frame_size, True)
     X = op.frame(x, frame_size, frame_size, True)
 
-    zf = [(yf, xf) for yf, xf in zip(Y, X)]
+    zf = list(zip(Y, X))
 
     f = lambda z: np.abs(np.sum(z[0] * z[1].conj(), axis=0))
 
     qot_local = np.stack(list(map(f, zf)))
 
-    qot_local_ip = np.repeat(qot_local, frame_size, axis=0) # better interp method?
-
-    return qot_local_ip
+    return np.repeat(qot_local, frame_size, axis=0)
 
 
 def snrstat(y, x, frame_size=10000, L=None, eval_range=(0, 0), scale=1):

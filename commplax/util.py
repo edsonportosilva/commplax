@@ -81,10 +81,13 @@ def dict_split(d, paths, fullmatch=True):
     flat_d = flatten_dict(unfreeze(d))
     matched = []
     for p in paths:
-        for k in flat_d.keys():
-            if len(p) <= len(k) and all(
-                    map(lambda a, b: bool(match(a, b)), p, k[:len(p)])):
-                matched.append(k)
+        matched.extend(
+            k
+            for k in flat_d.keys()
+            if len(p) <= len(k)
+            and all(map(lambda a, b: bool(match(a, b)), p, k[: len(p)]))
+        )
+
     x = {}
     y = {}
     for k, v in flat_d.items():
@@ -152,8 +155,7 @@ def tree_update_ignorenoneleaves(x, y):
              "did not match its input structure: input {} and output {}.")
       raise TypeError(msg.format(x_tree, y_tree))
     z_flat = map(lambda a, b: a if b is None else b, x_flat, y_flat)
-    z_tree = tree_unflatten(x_tree, z_flat)
-    return z_tree
+    return tree_unflatten(x_tree, z_flat)
 
 
 def _tree_replace(tree, subtree, value, none_leaf=True):
@@ -181,7 +183,7 @@ def passkwargs(kwargs_dict, **default_kwargs):
     assert isinstance(kwargs_dict, dict)
     kwargs_dict = dict(kwargs_dict)
     for k, v in default_kwargs.items():
-        kwargs_dict.update({k: kwargs_dict.pop(k, v)})
+        kwargs_dict[k] = kwargs_dict.pop(k, v)
     return kwargs_dict
 
 

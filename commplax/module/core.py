@@ -116,19 +116,19 @@ def update_aux(var, tar):
 
 
 def conv1d_t(t, taps, rtap, stride, mode):
-    assert t.sps >= stride, f'sps of input SigTime must be >= stride: {stride}, got {t.sps} instead'
-    if rtap is None:
-        rtap = (taps - 1) // 2
-    delay = -(-(rtap + 1) // stride) - 1
-    if mode == 'full':
-        tslice = (-delay * stride, taps - stride * (rtap + 1)) #TODO: think more about this
-    elif mode == 'same':
-        tslice = (0, 0)
-    elif mode == 'valid':
-        tslice = (delay * stride, (delay + 1) * stride - taps)
-    else:
-        raise ValueError('invalid mode {}'.format(mode))
-    return SigTime((t.start + tslice[0]) // stride, (t.stop + tslice[1]) // stride, t.sps // stride)
+  assert t.sps >= stride, f'sps of input SigTime must be >= stride: {stride}, got {t.sps} instead'
+  if rtap is None:
+      rtap = (taps - 1) // 2
+  delay = -(-(rtap + 1) // stride) - 1
+  if mode == 'full':
+    tslice = (-delay * stride, taps - stride * (rtap + 1)) #TODO: think more about this
+  elif mode == 'same':
+      tslice = (0, 0)
+  elif mode == 'valid':
+      tslice = (delay * stride, (delay + 1) * stride - taps)
+  else:
+    raise ValueError(f'invalid mode {mode}')
+  return SigTime((t.start + tslice[0]) // stride, (t.stop + tslice[1]) // stride, t.sps // stride)
 
 
 def conv1d_slicer(taps, rtap=None, stride=1, mode='valid'):
@@ -157,19 +157,19 @@ def vmap(f,
              'params': True,
          },
          in_axes=(Signal(-1, None),), out_axes=Signal(-1, None)):
-    # in_axes needs to be wrapped by a tuple, see Flax's lifted vmap implemetation:
-    # https://github.com/google/flax/blob/82e9798274c927286878c4600b4b09650d1e7935/flax/core/lift.py#L395
-    vf = lift.vmap(f,
-                   variable_axes=variable_axes, split_rngs=split_rngs,
-                   in_axes=in_axes, out_axes=out_axes)
-    vf.__name__ = 'vmapped_' + f.__name__ # [Workaround]: lifted transformation does not keep the original name
-    return vf
+  # in_axes needs to be wrapped by a tuple, see Flax's lifted vmap implemetation:
+  # https://github.com/google/flax/blob/82e9798274c927286878c4600b4b09650d1e7935/flax/core/lift.py#L395
+  vf = lift.vmap(f,
+                 variable_axes=variable_axes, split_rngs=split_rngs,
+                 in_axes=in_axes, out_axes=out_axes)
+  vf.__name__ = f'vmapped_{f.__name__}'
+  return vf
 
 
 def scan(f, in_axes=0, out_axes=0):
-    sf = lift.scan(f, in_axes=in_axes, out_axes=out_axes)
-    sf.__name__ = 'scanned' + f.__name__
-    return sf
+  sf = lift.scan(f, in_axes=in_axes, out_axes=out_axes)
+  sf.__name__ = f'scanned{f.__name__}'
+  return sf
 
 
 def simplefn(scope, signal, fn=None, aux_inputs=None):
@@ -338,28 +338,30 @@ def fanout(scope, inputs, num):
 # compositors
 
 def serial(*fs):
-    def _serial(scope, inputs, **kwargs):
-        for f in fs:
-            if isinstance(f, tuple) or isinstance(f, list):
-                name, f = f
-            else:
-                name = None
-            inputs = scope.child(f, name=name)(inputs, **kwargs)
-        return inputs
-    return _serial
+  def _serial(scope, inputs, **kwargs):
+    for f in fs:
+      if isinstance(f, (tuple, list)):
+        name, f = f
+      else:
+        name = None
+      inputs = scope.child(f, name=name)(inputs, **kwargs)
+    return inputs
+
+  return _serial
 
 
 def parallel(*fs):
-    def _parallel(scope, inputs, **kwargs):
-        outputs = []
-        for f, inp in zip(fs, inputs):
-            if isinstance(f, tuple) or isinstance(f, list):
-                name, f = f
-            else:
-                name = None
-            out = scope.child(f, name=name)(inp, **kwargs)
-            outputs.append(out)
-        return outputs
-    return _parallel
+  def _parallel(scope, inputs, **kwargs):
+    outputs = []
+    for f, inp in zip(fs, inputs):
+      if isinstance(f, (tuple, list)):
+        name, f = f
+      else:
+        name = None
+      out = scope.child(f, name=name)(inp, **kwargs)
+      outputs.append(out)
+    return outputs
+
+  return _parallel
 
 

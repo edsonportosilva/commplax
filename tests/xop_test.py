@@ -29,12 +29,14 @@ def test_convolve():
             x, h = conv_input_complex(n, m)
             a = np.convolve(x, h, mode=mode)
             b = xop.convolve(x, h, mode=mode)
-            assert np.allclose(a, b, rtol=2e-05), "\nn={}, m={}, mode={}".format(n, m, mode)
+            assert np.allclose(a, b, rtol=2e-05), f"\nn={n}, m={m}, mode={mode}"
 
         for mode in ['same', 'valid', 'full']:
             x, h = conv_input_float(n, m)
             a = np.convolve(x, h, mode=mode)
             b = xop.convolve(x, h, mode=mode)
-            assert np.allclose(a, b, rtol=1e-05, atol=5e-06), "\nn={}, m={}, mode={}".format(n, m, mode)
+            assert np.allclose(
+                a, b, rtol=1e-05, atol=5e-06
+            ), f"\nn={n}, m={m}, mode={mode}"
 
 
