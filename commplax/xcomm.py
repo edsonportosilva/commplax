@@ -29,11 +29,10 @@ def getpower(x, axis=0, real=False):
 
 def normpower(x, axis=0, real=False):
     ''' normalize signal power '''
-    if real:
-        p = getpower(x, axis=axis, real=True)
-        return x.real / jnp.sqrt(p.real) + jnp.array(1j) * x.imag / jnp.sqrt(p.imag)
-    else:
+    if not real:
         return x / jnp.sqrt(getpower(x, axis=axis))
+    p = getpower(x, axis=axis, real=True)
+    return x.real / jnp.sqrt(p.real) + jnp.array(1j) * x.imag / jnp.sqrt(p.imag)
 
 
 def qamscale(modformat):
@@ -107,8 +106,7 @@ def mimoconv(y, h, mode='same', conv=xop.fftconvolve):
     y = jnp.tile(y, (1, dims))
     h = jnp.reshape(h, (h.shape[0], dims * dims))
     zflat = jax.vmap(lambda a, b: conv(a, b, mode=mode), in_axes=-1, out_axes=-1)(y, h)
-    z = zflat.T.reshape((dims, dims, -1)).sum(axis=1).T
-    return z
+    return zflat.T.reshape((dims, dims, -1)).sum(axis=1).T
 
 
 def dbp_timedomain(y, h, c, mode='SAME', homosteps=True, scansteps=True, conv=xop.fftconvolve):
@@ -231,8 +229,7 @@ def repalign(y, x, skipfirst=0):
     offsets = -jax.vmap(xop.finddelay, in_axes=-1)(y[skipfirst:], x)[0] + skipfirst
     rep = -(-N // M)
     xrep = jnp.tile(x, [rep, 1])
-    z = jax.vmap(jnp.roll, in_axes=-1, out_axes=-1)(xrep, offsets)[:N, :]
-    return z
+    return jax.vmap(jnp.roll, in_axes=-1, out_axes=-1)(xrep, offsets)[:N, :]
 
 
 def alignphase(y, x, testing_phases=4):

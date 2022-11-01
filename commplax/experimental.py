@@ -69,8 +69,8 @@ def _ifwmtriplets(y, n, m):
     h = y[:, 0]
     v = y[:, 1]
 
-    boundi = lambda i: jnp.where((0 <= i) & (i < N), i, 0)
-    boundv = lambda i, a: jnp.where((0 <= i) & (i < N), a[i], 0)
+    boundi = lambda i: jnp.where((i >= 0) & (i < N), i, 0)
+    boundv = lambda i, a: jnp.where((i >= 0) & (i < N), a[i], 0)
 
     t = jnp.arange(N)
     m = jnp.arange(-m, m + 1)

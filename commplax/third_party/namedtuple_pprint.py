@@ -5,7 +5,7 @@ class PrettyPrinter(_pprint.PrettyPrinter):
     def format_namedtuple(self, object, stream, indent, allowance, context, level):
         # Code almost equal to _format_dict, see pprint code
         write = stream.write
-        write(object.__class__.__name__ + '(')
+        write(f'{object.__class__.__name__}(')
         object_dict = object._asdict()
         length = len(object_dict)
         if length:
@@ -31,7 +31,7 @@ class PrettyPrinter(_pprint.PrettyPrinter):
             write('\n' + ' ' * indent)
         for i, (key, ent) in enumerate(items):
             last = i == last_index
-            write(key + '=')
+            write(f'{key}=')
             self._format(ent, stream, indent + len(key) + 2,
                          allowance if last else 1,
                          context, level)

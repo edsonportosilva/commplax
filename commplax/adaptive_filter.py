@@ -107,8 +107,7 @@ def array(af_maker, replicas, axis=-1):
 
 def frame(y, taps, sps, rtap=None):
     y_pad = jnp.pad(y, mimozerodelaypads(taps=taps, sps=sps, rtap=rtap))
-    yf = jnp.array(xop.frame(y_pad, taps, sps))
-    return yf
+    return jnp.array(xop.frame(y_pad, taps, sps))
 
 
 def iterate(update: UpdateFn,
@@ -144,14 +143,12 @@ def r2c(r):
      [4.-4.j 5.-5.j]
      [6.-6.j 7.-7.j]]
     '''
-    if not jnp.iscomplexobj(r):
-        if r.ndim != 2:
-            raise ValueError('invalid ndim, expected 2 but got %d' % r.ndim)
-        r = r.reshape((r.shape[0], r.shape[-1] // 2, -1))
-        c = r[..., 0] + 1j * r[..., 1]
-    else:
-        c = r
-    return c
+    if jnp.iscomplexobj(r):
+        return r
+    if r.ndim != 2:
+        raise ValueError('invalid ndim, expected 2 but got %d' % r.ndim)
+    r = r.reshape((r.shape[0], r.shape[-1] // 2, -1))
+    return r[..., 0] + 1j * r[..., 1]
 
 
 def c2r(c):
@@ -167,21 +164,20 @@ def c2r(c):
      [ 4. -4.  5. -5.]
      [ 6. -6.  7. -7.]]
     '''
-    if jnp.iscomplexobj(c):
-        if c.ndim != 2:
-            raise ValueError('invalid ndim, expected 2 but got %d' % c.ndim)
-        r = jnp.stack([c.real, c.imag], axis=-1).reshape((c.shape[0], -1))
-    else:
-        r = c
-    return r
+    if not jnp.iscomplexobj(c):
+        return c
+    if c.ndim != 2:
+        raise ValueError('invalid ndim, expected 2 but got %d' % c.ndim)
+    return jnp.stack([c.real, c.imag], axis=-1).reshape((c.shape[0], -1))
 
 
 def filterzerodelaypads(taps, stride=1, rtap=None):
     if rtap is None:
         rtap = (taps + 1) // 2 - 1
     filterdelay = int(np.ceil((rtap + 1) / stride) - 1)
-    pads = np.array([[filterdelay * stride, taps - stride * (filterdelay + 1)], [0,0]])
-    return pads
+    return np.array(
+        [[filterdelay * stride, taps - stride * (filterdelay + 1)], [0, 0]]
+    )
 
 
 def mimozerodelaypads(taps, sps=2, rtap=None):
@@ -198,7 +194,7 @@ def mimoinitializer(taps, dims, dtype, initkind):
         w0[np.arange(dims), np.arange(dims), ctap] = 1.
         w0 = jnp.array(w0)
     else:
-        raise ValueError('invalid initkind %s' % initkind)
+        raise ValueError(f'invalid initkind {initkind}')
     return w0
 
 

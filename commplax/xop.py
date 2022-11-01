@@ -71,9 +71,6 @@ def _conv1d_lax(signal, kernel, mode):
         lpads = h.shape[0] - 1 - (h.shape[0] - 1) // 2
         hpads = h.shape[0] - 1 - h.shape[0] // 2
         mode = [(lpads, hpads)]
-    else:  # VALID mode is fine
-        pass
-
     x = x[jnp.newaxis,:,jnp.newaxis]
     h = h[::-1,jnp.newaxis,jnp.newaxis]
     dn = lax.conv_dimension_numbers(x.shape, h.shape, ('NWC', 'WIO', 'NWC'))
@@ -94,7 +91,7 @@ def _largest_prime_factor(n):
     '''brute-force finding of greatest prime factor of integer number.
     '''
     i = 2
-    while i * i <= n:
+    while i**2 <= n:
         if n % i:
             i += 1
         else:
@@ -119,12 +116,13 @@ def _fft_size_factor(x, gpf, cond=lambda _: True):
 
 def conv1d_oa_fftsize(signal_length, kernel_length, oa_factor=8, max_fft_prime_factor=5):
     target_fft_size = kernel_length * oa_factor
-    if target_fft_size < signal_length:
-        fft_size = _fft_size_factor(target_fft_size, max_fft_prime_factor)
-    else:
-        fft_size = _fft_size_factor(max(signal_length, kernel_length), max_fft_prime_factor)
-
-    return fft_size
+    return (
+        _fft_size_factor(target_fft_size, max_fft_prime_factor)
+        if target_fft_size < signal_length
+        else _fft_size_factor(
+            max(signal_length, kernel_length), max_fft_prime_factor
+        )
+    )
 
 
 def _conv1d_fft_oa_same(signal, kernel, fft_size):
@@ -197,7 +195,7 @@ def _conv1d_fft_oa(signal, kernel, fft_size, mode):
     elif mode == 'valid':
         signal = _conv1d_fft_oa_valid(signal, kernel, fft_size)
     else:
-        raise ValueError('invalid mode %s' % mode)
+        raise ValueError(f'invalid mode {mode}')
     return signal.real if isfloat(signal) and isfloat(kernel) else signal
 
 
@@ -236,10 +234,10 @@ def _frame(array, flen, fstep, pad_end, pad_constants):
     n = array.shape[0]
 
     if n < flen:
-        raise ValueError('array length {} < frame length {}'.format(n, flen))
+        raise ValueError(f'array length {n} < frame length {flen}')
 
     if flen < fstep:
-        raise ValueError('frame length {} < frame step {}'.format(flen, fstep))
+        raise ValueError(f'frame length {flen} < frame step {fstep}')
 
     if pad_end:
         return _frame_pad(array, flen, fstep, pad_constants)
@@ -260,8 +258,7 @@ def framescaninterp(x, func, flen, fstep, P=1):
     xp = jnp.arange(F) * fstep + flen // 2
     x = jnp.arange(N * P) / P
     interp = vmap(lambda x, xp, fp: jnp.interp(x, xp, fp), in_axes=(None, None, -1), out_axes=-1)
-    ysip = interp(x, xp, ys) / P
-    return ysip
+    return interp(x, xp, ys) / P
 
 
 @partial(jit, static_argnums=(1,))
@@ -351,10 +348,7 @@ def fftconvolve(x, h, mode='full'):
     mode = mode.lower()
 
     if x.shape[0] < h.shape[0]:
-        tmp = x
-        x = h
-        h = tmp
-
+        x, h = h, x
     T = h.shape[0]
     N = x.shape[0] + T - 1
 
@@ -367,7 +361,7 @@ def fftconvolve(x, h, mode='full'):
     elif mode == 'valid':
         return y[T - 1:N - T + 1]
     else:
-        raise ValueError('invalid mode ''%s''' % mode)
+        raise ValueError(f'invalid mode {mode}')
 
 
 @jit
@@ -407,7 +401,7 @@ def fftconvolve2(x, h, mode='full'):
     elif mode == 'valid':
         return y[T0 - 1: N0 - T0 + 1, T1 - 1: N1 - T1 + 1]
     else:
-        raise ValueError('invalid mode ''%s''' % mode)
+        raise ValueError(f'invalid mode {mode}')
 
 
 @jit
@@ -461,8 +455,7 @@ def correlate(a, v, mode='same', method='auto'):
     '''
     a = jnp.atleast_1d(a)
     v = jnp.atleast_1d(v)
-    z = convolve(a, v[::-1].conj(), mode=mode, method=method)
-    return z
+    return convolve(a, v[::-1].conj(), mode=mode, method=method)
 
 
 def frft(f, a):

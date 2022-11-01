@@ -32,8 +32,7 @@ def dbp_2d(y, h, phi):
 def vconv(x, y, mode='full', **kwargs):
     """ vectorized convolution """
     conv = np.vectorize(partial(np.convolve, mode=mode, **kwargs), signature='(n),(m)->(k)')
-    z = conv(x.T, y.T).T
-    return z
+    return conv(x.T, y.T).T
 
 
 def resample(x, p, q, axis=0):
@@ -46,10 +45,10 @@ def frame_prepare(x, flen, fstep, pad_end=False, pad_constants=0):
     n = x.shape[0]
 
     if n < flen:
-        raise ValueError('array length {} < frame length {}'.format(n, flen))
+        raise ValueError(f'array length {n} < frame length {flen}')
 
     if flen < fstep:
-        raise ValueError('frame length {} < frame step {}'.format(flen, fstep))
+        raise ValueError(f'frame length {flen} < frame step {fstep}')
 
     if pad_end:
         n = int(np.ceil(n))
@@ -74,10 +73,10 @@ def frame_shape(s, flen, fstep, pad_end=False, allowwaste=True):
         raise ValueError('rank must be atleast 2, got %d instead' % ndim)
 
     if n < flen:
-        raise ValueError('array length {} < frame length {}'.format(n, flen))
+        raise ValueError(f'array length {n} < frame length {flen}')
 
     if flen < fstep:
-        raise ValueError('frame length {} < frame step {}'.format(flen, fstep))
+        raise ValueError(f'frame length {flen} < frame step {fstep}')
 
     if pad_end:
         fnum = -(-n // fstep) # double negatives to round up
